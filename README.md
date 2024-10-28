@@ -34,3 +34,14 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Notes
+
+- Mempool (unconfirmed) balance was used because it is faster to test like that.
+- Testing difficulties experienced due to time gating on tBTC faucets and couldn't use VPN.
+
+## Possible Improvements
+
+- Loader for loading states (UI).
+- Split request and waiting for payment into two steps (UI).
+- Back button to prevent refresh.
