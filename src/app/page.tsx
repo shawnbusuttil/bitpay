@@ -1,55 +1,76 @@
 "use client"
 
+import { Loader } from '@/components/Loader';
+import Search from '@/components/Search';
+import useGetReleasesByArtist from '@/hooks/useGetReleasesByArtist';
+import { Image, Card, PaginationProps, Pagination, Flex } from 'antd';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react'
-import Send from '@/components/Send';
-import Message from '@/components/Message';
-import useGeneratePaymentRequest from '@/hooks/generatePaymentRequest';
-import useCheckPaymentStatus from '@/hooks/checkPaymentStatus';
 
 const Home = () => {
-  const [amount, setAmount] = useState(0);
-  const { generatePaymentRequest, paymentRequestError, isLoading, paymentRequest } = useGeneratePaymentRequest();
-  const { paymentStatus, paymentStatusError, isPolling, isPaymentReceived, startPolling } = useCheckPaymentStatus(paymentRequest?.address, paymentRequest?.amount);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const handleGeneratePaymentRequest = (event: React.FormEvent) => {
-    event.preventDefault();
-    generatePaymentRequest(amount);
+  const artistQuery = searchParams?.get('artist');
+  const pageQuery = searchParams?.get('page');
+
+  const [artist, setArtist] = useState<string | undefined>(artistQuery || undefined);
+  const [currentPage, setCurrentPage] = useState<number | undefined>(
+    pageQuery ? parseInt(pageQuery) : undefined
+  );
+  
+  const { releases, isLoading, error } = useGetReleasesByArtist(artist, currentPage);
+
+  const handleSearch = (value: string) => {
+    if (!value) return;
+
+    setArtist(value);
+    setCurrentPage(undefined);
+
+    router.push(`/?artist=${encodeURIComponent(value)}`);
+  };
+
+  const onChange: PaginationProps['onChange'] = (page) => {
+    setCurrentPage(page);
+    router.push(`/?artist=${encodeURIComponent(artist!)}&page=${page}`);
   };
 
   useEffect(() => {
-    if (paymentRequest && 'address' in paymentRequest) {
-      startPolling();
-    }
-  }, [paymentRequest, startPolling]);
+    setArtist(artistQuery!);
+    setCurrentPage(parseInt(pageQuery!));
+  }, [artistQuery, pageQuery]);
 
   return (
     <div className='flex flex-col py-5 items-center min-w-[250px] text-center'>
-      <h1 className='font-bold text-2xl mb-5'>Bitcoin Testnet Payment</h1>
-
-      {!paymentRequest && (
-        <form className='flex flex-col justify-between items-center h-[150px]' onSubmit={handleGeneratePaymentRequest}>
-        <label className='block'>Enter the amount of Bitcoin you wish to send:</label>
-        <input className='w-[200px] text-black p-1 rounded-md' type='number' step="0.00000001" value={amount} onChange={(e) => setAmount(parseFloat(e.target.value))} />
-
-        <button className='block bg-orange-700 p-2 rounded-full w-[250px]' type='submit' disabled={isLoading || !amount}>
-          {isLoading ? 'Generating...' : 'Generate Payment Request'}
-        </button>
-      </form>
-      )}
-
-      {paymentRequest?.address && (
-        <Send address={paymentRequest.address} amount={paymentRequest.amount} />
-      )}
+      <h1 className='font-bold text-2xl mb-5'>Search For Your Favourite Artist</h1>
+      <Search onSearch={handleSearch} />
       
-      {/* Messages */}
-      <div className='mt-5'>
-        {isPolling && <p>Checking the blockchain for payment...</p>} 
-        {/* Improvement suggestion: Loader Component */}
-        
-        {isPaymentReceived && <Message message={`The payment of ${paymentStatus?.receivedAmount}₿ received!`} />}
-        {paymentRequestError && <Message message={paymentRequestError} type='error' />}
-        {paymentStatusError && <Message message={paymentStatusError} type='error' />}
-      </div>
+      <Loader loading={isLoading}>
+        <Flex vertical justify='space-between' align='center' className='m-5' gap={20}>
+          <Flex vertical justify='space-between' wrap className='sm:flex-row min-h-[600px]' gap={8}>
+            {error && <div>{error}</div>}
+            {releases?.releases?.map(rel => (
+              <Link key={rel.id} href={`/releases/${rel.id}`} className='h-[250px]'>
+                <Card title={rel.title} bordered={false} className='w-[200px] h-full'>
+                  <Image src={rel.thumb} preview={false} alt={rel.title} />
+                </Card>
+              </Link>
+            ))}
+          </Flex>
+          {releases?.pagination?.pages && releases.pagination.pages > 1 && (
+            <Pagination 
+              data-testid="pagination"
+              className='self-center' 
+              current={currentPage} 
+              onChange={onChange} 
+              total={releases.pagination.pages} 
+              showSizeChanger={false} 
+            />
+          )}
+        </Flex>
+      </Loader>
     </div>
   )
 }
